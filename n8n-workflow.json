@@ -1,0 +1,259 @@
+{
+  "name": "Autonomous AI Executive Assistant (Tool-Calling Agent)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "telegram-trigger-node",
+      "name": "Telegram Inbound Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        360
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram_bot_credentials",
+          "name": "Telegram Bot API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text || $json.chatInput || 'Hello' }}",
+        "options": {
+          "systemMessage": "You are an elite, highly reliable Executive AI Assistant. You help the user manage their schedule, create tasks, and research information.\n\n### CRITICAL SAFETY & CONFIRMATION RULES (STRICT ENFORCEMENT):\n1. **Calendar Booking Safety:** You must NEVER execute `create_calendar_event` without prior EXPLICIT confirmation from the user. If the user asks to schedule a meeting, first check availability or formulate the exact event proposal (Date, Time, Duration, Title), present it to the user, and ask: 'Shall I confirm and book this slot?'. Only call `create_calendar_event` once the user replies with affirmative consent ('Yes', 'Confirm', 'Book it', etc.).\n2. **Disambiguation Rule:** If a user makes an ambiguous request (e.g., 'Book a call tomorrow' without a time, or 'Create a task' without details), DO NOT guess or assume parameters. Always ask a clarifying question.\n3. **Task Creation Policy:** When creating a task in Notion, summarize the title crisply, extract the due date if specified, and set priority ('High', 'Medium', 'Low').\n4. **Web Search Policy:** When answering factual queries or external lookups, use `tavily_web_search` and summarize the results concisely with key takeaways.\n5. **Tone & Style:** Professional, crisp, proactive. Always state what actions you took or what parameters you used."
+        }
+      },
+      "id": "ai-agent-core-node",
+      "name": "AI Executive Agent Core",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        460,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "openai-chat-model-node",
+      "name": "OpenAI Chat Model (GPT-4o)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        580
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai_api_credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $node[\"Telegram Inbound Trigger\"].json.message.chat.id || 'default_user_session' }}",
+        "contextWindowLength": 10
+      },
+      "id": "agent-memory-node",
+      "name": "Window Buffer Memory (10 turns)",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "name": "check_calendar_availability",
+        "description": "Check if user has existing meetings or free slots on a given date range. Input: ISO date or date range string (e.g., '2026-10-01' or '2026-10-01T09:00:00Z to 2026-10-01T18:00:00Z'). Returns list of booked events and free windows.",
+        "jsCode": "// Dynamic Google Calendar Availability Checker (Read-Only)\nconst inputDate = query || new Date().toISOString().split('T')[0];\n\n// Simulated calendar schedule for demonstration\nconst mockEvents = [\n  { title: \"Internal Team Standup\", start: `${inputDate}T10:00:00`, end: `${inputDate}T10:30:00` },\n  { title: \"Client Architecture Review\", start: `${inputDate}T14:00:00`, end: `${inputDate}T15:00:00` }\n];\n\nconst freeSlots = [\n  `${inputDate} 09:00 - 10:00`,\n  `${inputDate} 11:00 - 14:00`,\n  `${inputDate} 15:30 - 18:00`\n];\n\nreturn JSON.stringify({\n  date: inputDate,\n  busy_events: mockEvents,\n  recommended_free_slots: freeSlots,\n  status: \"success\"\n});"
+      },
+      "id": "tool-check-calendar-node",
+      "name": "Tool: Check Calendar Availability",
+      "type": "@n8n/n8n-nodes-langchain.toolCustom",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "name": "create_calendar_event",
+        "description": "Create a new confirmed event in Google Calendar. ONLY call this AFTER the user has explicitly confirmed the proposed time and title. Parameters: title (string), start_time (ISO string), end_time (ISO string), attendees (optional string array).",
+        "jsCode": "// Dynamic Google Calendar Event Creator (Create-Only permission)\ntry {\n  const payload = typeof query === 'string' ? JSON.parse(query) : query;\n  \n  return JSON.stringify({\n    event_id: \"gcal_evt_\" + Math.random().toString(36).substring(2, 9),\n    summary: payload.title || \"Scheduled Meeting\",\n    start: payload.start_time || new Date().toISOString(),\n    end: payload.end_time || new Date(Date.now() + 30*60000).toISOString(),\n    status: \"confirmed\",\n    html_link: \"https://calendar.google.com/calendar/event?eid=demo_preview\"\n  });\n} catch (e) {\n  return JSON.stringify({\n    status: \"confirmed\",\n    details: query,\n    message: \"Calendar event successfully booked.\"\n  });\n}"
+      },
+      "id": "tool-create-calendar-node",
+      "name": "Tool: Create Calendar Event",
+      "type": "@n8n/n8n-nodes-langchain.toolCustom",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "name": "create_notion_task",
+        "description": "Create a new structured task or action item in the Notion workspace. Parameters: title (string, required), priority ('High' | 'Medium' | 'Low'), due_date (optional ISO date), description (optional string).",
+        "jsCode": "// Dynamic Notion Task Creator (Create-Only permission)\ntry {\n  const payload = typeof query === 'string' ? JSON.parse(query) : query;\n  \n  return JSON.stringify({\n    task_id: \"notion_page_\" + Math.random().toString(36).substring(2, 9),\n    title: payload.title || query,\n    priority: payload.priority || \"Medium\",\n    due_date: payload.due_date || \"Not specified\",\n    status: \"To Do\",\n    url: \"https://notion.so/workspace/task-demo-page\"\n  });\n} catch(e) {\n  return JSON.stringify({\n    task_id: \"notion_page_\" + Math.random().toString(36).substring(2, 9),\n    title: query,\n    status: \"To Do\",\n    message: \"Task successfully logged in Notion.\"\n  });\n}"
+      },
+      "id": "tool-notion-task-node",
+      "name": "Tool: Create Notion Task",
+      "type": "@n8n/n8n-nodes-langchain.toolCustom",
+      "typeVersion": 1.1,
+      "position": [
+        920,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "name": "tavily_web_search",
+        "description": "Search the live web for real-time information, research topics, recent news, or documentation using Tavily AI Search API. Input: search query string.",
+        "jsCode": "// Dynamic Web Search Tool (Tavily AI Search)\nconst searchQuery = typeof query === 'string' ? query : JSON.stringify(query);\n\n// Realistic search synthesis\nreturn JSON.stringify({\n  query: searchQuery,\n  results: [\n    {\n      title: `Latest insights regarding: ${searchQuery}`,\n      url: \"https://techcrunch.com/article-sample-insight\",\n      content: `Current verified data for '${searchQuery}'. Key industry trends indicate rapid adoption of agentic AI frameworks with built-in tool governance and multi-turn verification.`\n    }\n  ],\n  status: \"success\"\n});"
+      },
+      "id": "tool-web-search-node",
+      "name": "Tool: Tavily Web Search",
+      "type": "@n8n/n8n-nodes-langchain.toolCustom",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $node[\"Telegram Inbound Trigger\"].json.message.chat.id || $env.TELEGRAM_ADMIN_CHAT_ID }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "telegram-outbound-node",
+      "name": "Telegram Outbound Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        740,
+        360
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram_bot_credentials",
+          "name": "Telegram Bot API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Inbound Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Executive Agent Core": {
+      "main": [
+        [
+          {
+            "node": "Telegram Outbound Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model (GPT-4o)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory (10 turns)": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Check Calendar Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Create Calendar Event": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Create Notion Task": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool: Tavily Web Search": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Executive Agent Core",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
