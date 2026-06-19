@@ -1,0 +1,130 @@
+[
+  {
+    "scenario_id": "scenario_1_calendar_safety_flow",
+    "description": "User requests a calendar booking -> Agent checks slots & asks for confirmation -> User confirms -> Agent creates event.",
+    "execution_type": "Illustrative traces (simulator)",
+    "turns": [
+      {
+        "turn": 1,
+        "user_message": "Can you book a 30-minute sync with Alex tomorrow at 15:00?",
+        "thought": "The user wants to book a meeting. First, I need to check if 15:00 is available on the user's calendar for tomorrow. I must NOT book it directly until confirmed.",
+        "tool_call": {
+          "name": "check_calendar_availability",
+          "arguments": {
+            "date": "<tomorrow>"
+          }
+        },
+        "tool_output": {
+          "date": "<tomorrow>",
+          "busy_events": [
+            { "title": "Team Standup", "start": "<tomorrow>T10:00:00", "end": "<tomorrow>T10:30:00" },
+            { "title": "Client Review", "start": "<tomorrow>T14:00:00", "end": "<tomorrow>T15:00:00" }
+          ],
+          "recommended_free_slots": [
+            "<tomorrow> 11:00 - 14:00",
+            "<tomorrow> 15:00 - 18:00"
+          ],
+          "status": "success"
+        },
+        "agent_response": "I checked your calendar for tomorrow: your 15:00 slot is free.\n\n📅 **Proposed Meeting Details:**\n• **Title:** Sync with Alex\n• **Time:** Tomorrow, 15:00 – 15:30\n\nShall I go ahead and confirm this booking on your Google Calendar?"
+      },
+      {
+        "turn": 2,
+        "user_message": "Yes, please confirm and book it.",
+        "thought": "User gave explicit affirmative consent. Now I am authorized to call `create_calendar_event`.",
+        "tool_call": {
+          "name": "create_calendar_event",
+          "arguments": {
+            "title": "Sync with Alex",
+            "start_time": "<tomorrow>T15:00:00",
+            "end_time": "<tomorrow>T15:30:00"
+          }
+        },
+        "tool_output": {
+          "event_id": "gcal_evt_99812a",
+          "summary": "Sync with Alex",
+          "start": "<tomorrow>T15:00:00",
+          "end": "<tomorrow>T15:30:00",
+          "status": "confirmed",
+          "html_link": "https://calendar.google.com/calendar/event?eid=gcal_evt_demo"
+        },
+        "agent_response": "✅ **Meeting Confirmed & Booked!**\n\n• **Event:** Sync with Alex\n• **Schedule:** Tomorrow, 15:00 – 15:30\n• **Calendar Link:** [Open in Google Calendar](https://calendar.google.com/calendar/event?eid=gcal_evt_demo)"
+      }
+    ]
+  },
+  {
+    "scenario_id": "scenario_2_ambiguous_request_disambiguation",
+    "description": "User makes an underspecified scheduling request -> Agent prompts for specific time instead of guessing.",
+    "execution_type": "Illustrative traces (simulator)",
+    "turns": [
+      {
+        "turn": 1,
+        "user_message": "Schedule a meeting with Elena tomorrow.",
+        "thought": "The user did not provide a specific time or duration. Under the disambiguation rule, I must ask for a preferred time rather than assuming a slot.",
+        "tool_call": null,
+        "tool_output": null,
+        "agent_response": "I'd be glad to schedule that! What time tomorrow would you prefer for the meeting with Elena, and how long should it be (e.g., 30 mins or 1 hour)?"
+      }
+    ]
+  },
+  {
+    "scenario_id": "scenario_3_notion_task_creation",
+    "description": "User asks to log an urgent task -> Agent extracts parameters and creates task in Notion.",
+    "execution_type": "Illustrative traces (simulator)",
+    "turns": [
+      {
+        "turn": 1,
+        "user_message": "Create a high priority task to review the supplier contract by Friday 5 PM.",
+        "thought": "User wants to create a task with high priority and a specific deadline. I will call `create_notion_task` with structured fields.",
+        "tool_call": {
+          "name": "create_notion_task",
+          "arguments": {
+            "title": "Review supplier contract",
+            "priority": "High",
+            "due_date": "<next Friday>T17:00:00",
+            "description": "Urgent contract review"
+          }
+        },
+        "tool_output": {
+          "task_id": "notion_page_7f3b21",
+          "title": "Review supplier contract",
+          "priority": "High",
+          "due_date": "<next Friday>T17:00:00",
+          "status": "To Do",
+          "url": "https://notion.so/workspace/task-review-contract"
+        },
+        "agent_response": "📌 **Task Created in Notion!**\n\n• **Title:** Review supplier contract\n• **Priority:** 🔴 High\n• **Due Date:** Friday at 5:00 PM\n• **Status:** To Do\n• **Notion Link:** [View Task in Notion](https://notion.so/workspace/task-review-contract)"
+      }
+    ]
+  },
+  {
+    "scenario_id": "scenario_4_web_search_tavily",
+    "description": "User asks for research -> Agent triggers Tavily Web Search and summarizes findings.",
+    "execution_type": "Illustrative traces (simulator)",
+    "turns": [
+      {
+        "turn": 1,
+        "user_message": "What are the common practices for n8n AI Agent memory management in multi-user setups?",
+        "thought": "This requires lookups regarding n8n memory architecture. I will query Tavily Web Search.",
+        "tool_call": {
+          "name": "tavily_web_search",
+          "arguments": {
+            "query": "n8n AI Agent LangChain memory management multi-user Telegram best practices"
+          }
+        },
+        "tool_output": {
+          "query": "n8n AI Agent LangChain memory management multi-user Telegram best practices",
+          "results": [
+            {
+              "title": "State & Memory in n8n AI Agents",
+              "url": "https://docs.n8n.io/advanced-ai/memory-management",
+              "content": "For multi-tenant Telegram setups, configure Window Buffer Memory with a custom sessionKey tied to message.chat.id. Limit window length to 8-12 turns to prevent context window explosion."
+            }
+          ],
+          "status": "success"
+        },
+        "agent_response": "Here are common practices for n8n AI Agent memory management:\n\n1. **Session Isolation:** Configure `sessionKey` using `{{ $json.message.chat.id }}` to maintain separate conversational state per Telegram user.\n2. **Bounded Window Memory:** Restrict `contextWindowLength` to 8–12 turns to balance multi-turn context retention with token cost.\n3. **External Store for Scale:** For high-concurrency deployments, connect Redis or PostgreSQL-backed chat history nodes."
+      }
+    ]
+  }
+]
