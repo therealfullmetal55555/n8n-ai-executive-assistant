@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 180" width="100%" height="100%">
+  <defs>
+    <style>
+      .bone-bg { fill: #F2F0EB; }
+      .carbon-line { stroke: #1A1917; stroke-width: 1.5px; fill: none; }
+      .label-head { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; fill: #1A1917; letter-spacing: 0.08em; text-transform: uppercase; }
+      .label-sub { font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 10px; fill: #66635B; letter-spacing: 0.1em; text-transform: uppercase; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="180" class="bone-bg"/>
+
+  <!-- Node 1: Telegram Inbound -->
+  <g transform="translate(40, 40)">
+    <path d="M 0,15 L 0,0 L 15,0" class="carbon-line"/>
+    <path d="M 175,100 L 190,100 L 190,85" class="carbon-line"/>
+    <path d="M 190,15 L 190,0 L 175,0" class="carbon-line"/>
+    <path d="M 0,85 L 0,100 L 15,100" class="carbon-line"/>
+    <text x="95" y="42" class="label-head" text-anchor="middle">TELEGRAM BOT</text>
+    <text x="95" y="60" class="label-sub" text-anchor="middle">INBOUND / OUTBOUND</text>
+    <text x="95" y="76" class="label-sub" text-anchor="middle">[ USER TRIGGER ]</text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="230" y1="90" x2="280" y2="90" class="carbon-line"/>
+  <polygon points="280,90 270,85 270,95" fill="#1A1917"/>
+
+  <!-- Node 2: Agent Core -->
+  <g transform="translate(280, 40)">
+    <path d="M 0,15 L 0,0 L 15,0" class="carbon-line"/>
+    <path d="M 185,100 L 200,100 L 200,85" class="carbon-line"/>
+    <path d="M 200,15 L 200,0 L 185,0" class="carbon-line"/>
+    <path d="M 0,85 L 0,100 L 15,100" class="carbon-line"/>
+    <text x="100" y="42" class="label-head" text-anchor="middle">N8N AI AGENT</text>
+    <text x="100" y="60" class="label-sub" text-anchor="middle">LANGCHAIN ENGINE</text>
+    <text x="100" y="76" class="label-sub" text-anchor="middle">[ 10-TURN MEMORY ]</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="480" y1="90" x2="530" y2="90" class="carbon-line"/>
+  <polygon points="530,90 520,85 520,95" fill="#1A1917"/>
+
+  <!-- Node 3: External Tools -->
+  <g transform="translate(530, 40)">
+    <path d="M 0,15 L 0,0 L 15,0" class="carbon-line"/>
+    <path d="M 185,100 L 200,100 L 200,85" class="carbon-line"/>
+    <path d="M 200,15 L 200,0 L 185,0" class="carbon-line"/>
+    <path d="M 0,85 L 0,100 L 15,100" class="carbon-line"/>
+    <text x="100" y="42" class="label-head" text-anchor="middle">CONNECTED TOOLS</text>
+    <text x="100" y="60" class="label-sub" text-anchor="middle">CALENDAR / NOTION</text>
+    <text x="100" y="76" class="label-sub" text-anchor="middle">[ TAVILY RESEARCH ]</text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="730" y1="90" x2="780" y2="90" class="carbon-line"/>
+  <polygon points="780,90 770,85 770,95" fill="#1A1917"/>
+
+  <!-- Node 4: Safety Gate -->
+  <g transform="translate(780, 40)">
+    <path d="M 0,15 L 0,0 L 15,0" class="carbon-line"/>
+    <path d="M 165,100 L 180,100 L 180,85" class="carbon-line"/>
+    <path d="M 180,15 L 180,0 L 165,0" class="carbon-line"/>
+    <path d="M 0,85 L 0,100 L 15,100" class="carbon-line"/>
+    <text x="90" y="42" class="label-head" text-anchor="middle">SAFETY GATE</text>
+    <text x="90" y="60" class="label-sub" text-anchor="middle">CONFIRM-BEFORE-WRITE</text>
+    <text x="90" y="76" class="label-sub" text-anchor="middle">[ 2-STEP PROTOCOL ]</text>
+  </g>
+</svg>
